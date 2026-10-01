@@ -1,9 +1,9 @@
 import {toRecords, fromRecords, diff, applyPatch} from './shared.mjs';
 const API = 'https://delivery-tally-api.yichonezhu.workers.dev';
 const DRAFT_KEY = 'deliveryTally_cloud_draft_v1';
-export function createCloudSync({getState, setState, setUpdated = () => {}, render, legacy}) {
+export function createCloudSync({getState, setState, setUpdated = () => {}, render}) {
   const $ = id => document.getElementById(id);
-  let base = {}, pending = null, connected = false, sending = false, blocked = false, timer;
+  let base = {}, pending = null, connected = false, sending = false, blocked = false, timer, retryAt = 0;
   let restored = null;
   try { restored = JSON.parse(sessionStorage.getItem(DRAFT_KEY)); } catch {}
   const records = () => toRecords(getState());
@@ -36,13 +36,13 @@ export function createCloudSync({getState, setState, setUpdated = () => {}, rend
       // The user may have edited during the request; never overwrite those changes.
       if (diff(beforeRequest, records()).length || hasChanges()) return;
       base = remote.records; apply(base, remote.updated); persist();
-      status('已同步 · ' + new Date().toLocaleTimeString('zh-TW'));
-    } catch (error) { status(error.message || '無法同步，請稍後重試', true); }
+      status('已儲存');
+    } catch (error) { retryAt = Date.now() + 15000; status('連線中斷，正在自動重連…', true); }
     finally { sending = false; if (!blocked && hasChanges()) schedule(); }
   }
   function conflict(message) {
     blocked = true; lock(true); $('syncReload').hidden = false;
-    status(message + '；未送出的修改仍保留，可先下載備份。', true); persist();
+    status(message + '；請重新載入最新訂單後再修改。', true); persist();
   }
   async function flush() {
     if (!connected || sending || blocked) return;
@@ -54,7 +54,7 @@ export function createCloudSync({getState, setState, setUpdated = () => {}, rend
     }
     // Recover the exact state represented by this request, even after reload/retry.
     const sent = applyPatch(base, pending.changes);
-    if (sent.conflicts) { conflict('草稿版本不一致，請下載備份並重新載入'); return; }
+    if (sent.conflicts) { conflict('草稿版本不一致'); return; }
     sending = true; status('儲存中…');
     try {
       const remote = await request('POST', pending);
@@ -63,14 +63,14 @@ export function createCloudSync({getState, setState, setUpdated = () => {}, rend
       const rebased = applyPatch(remote.records, newerLocalChanges);
       base = remote.records;
       if (rebased.conflicts) { conflict('儲存期間有人修改了相同資料'); return; }
-      apply(rebased.records, remote.updated); persist(); status('已儲存至雲端 · ' + new Date().toLocaleTimeString('zh-TW'));
+      apply(rebased.records, remote.updated); persist(); status('已儲存');
     } catch (error) {
       if (error.status === 409) { pending = null; conflict(error.message); }
-      else status((error.message || '連線中斷') + '；修改尚未確認儲存，請按「重試同步」。', true);
+      else { retryAt = Date.now() + 15000; status('尚未儲存，正在自動重試…', true); }
       persist();
     } finally {
       sending = false;
-      // Do not endlessly retry an uncertain failed write. Keep its ID for manual retry.
+      // Retry uncertain writes with the same ID so a saved change is never duplicated.
       if (!pending && !blocked && diff(base, records()).length) schedule();
     }
   }
@@ -85,34 +85,26 @@ export function createCloudSync({getState, setState, setUpdated = () => {}, rend
       if (restored && (restored.pending || diff(restored.base, restored.records).length)) {
         base = restored.base; pending = restored.pending; apply(restored.records, remote.updated); restored = null;
         status('已恢復未送出的草稿，正在確認儲存狀態…');
-      } else { base = remote.records; apply(base, remote.updated); restored = null; status('已連接雲端'); }
+      } else { base = remote.records; apply(base, remote.updated); restored = null; status('已儲存'); }
       lock(false); persist();
-      $('syncImport').hidden = !Object.keys(toRecords(legacy)).length;
-    } catch (error) { status(error.message || '無法連接雲端', true); }
+    } catch (error) { retryAt = Date.now() + 15000; status('連線中斷，正在自動重連…', true); }
     finally { sending = false; }
     if (connected && hasChanges()) await flush();
   }
-  $('syncRetry').onclick = () => { if (!connected) connect(); else if (hasChanges()) flush(); else refresh(); };
   $('syncReload').onclick = async () => {
-    if (sending || !confirm('重新載入雲端資料會放棄此頁未送出的修改。需要時請先下載備份。確定繼續？')) return;
+    if (sending || !confirm('其他人已更新訂單，重新載入會放棄你尚未儲存的修改。確定繼續？')) return;
     sending = true;
     try { const remote = await request(); base = remote.records; pending = null; blocked = false; apply(base, remote.updated); persist(); lock(false); $('syncReload').hidden = true; status('已重新載入雲端資料'); }
     catch (error) { status(error.message, true); }
     finally { sending = false; }
   };
-  $('syncExport').onclick = () => {
-    const file = new Blob([JSON.stringify({state:getState(), savedBase:base, pending}, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(file), a = document.createElement('a'); a.href = url; a.download = '外送統計備份-' + new Date().toISOString().slice(0,10) + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
-  };
-  $('syncImport').onclick = () => {
-    if (sending || blocked || hasChanges()) { status('請先完成目前的雲端同步', true); return; }
-    const current = records(), old = toRecords(legacy);
-    const missing = Object.keys(old).filter(k => !Object.hasOwn(current, k));
-    if (!missing.length) { alert('原有資料已存在於雲端，沒有可新增的項目。'); return; }
-    if (!confirm(`將此瀏覽器原有的 ${missing.length} 筆資料加入團隊雲端？已有的同名訂單不會覆蓋。`)) return;
-    for (const k of missing) current[k] = old[k]; apply(current); changed();
-  };
   window.addEventListener('beforeunload', e => {if (connected && hasChanges()) {e.preventDefault(); e.returnValue = '';}});
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
-  return {changed, start() {lock(true); connect(); setInterval(refresh, 3000);}};
+  async function tick() {
+    if (document.hidden || sending || blocked || Date.now() < retryAt) return;
+    if (!connected) await connect();
+    else if (pending) await flush();
+    else await refresh();
+  }
+  document.addEventListener('visibilitychange', tick);
+  return {changed, start() {lock(true); connect(); setInterval(tick, 3000);}};
 }

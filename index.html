@@ -110,15 +110,10 @@ textarea{width:100%;min-height:150px;resize:vertical;margin-top:8px}
   <span id="headerSum"></span>
 </header>
 
-<section class="card" style="max-width:1168px;margin:16px auto 0" aria-label="雲端同步">
-  <div id="syncTools">
-    <button id="syncRetry">重試同步</button>
-    <button id="syncExport">下載備份</button>
-    <button id="syncImport" hidden>匯入此瀏覽器原有資料</button>
-    <button id="syncReload" hidden>放棄草稿並重新載入</button>
-  </div>
-  <div id="syncStatus" role="status" aria-live="polite" class="hint" style="margin-top:6px">正在啟動雲端同步…</div>
-</section>
+<div style="max-width:1168px;margin:10px auto;padding:0 16px" aria-label="雲端同步">
+  <span id="syncStatus" role="status" aria-live="polite" class="hint">連線中…</span>
+  <button id="syncReload" hidden>重新載入最新訂單</button>
+</div>
 <main inert>
   <div class="col">
     <section class="card">
@@ -193,7 +188,7 @@ textarea{width:100%;min-height:150px;resize:vertical;margin-top:8px}
 <div class="toast" id="toast"></div>
 
 <script type="module">
-import { createCloudSync } from "./cloud-sync.mjs?v=public-1";
+import { createCloudSync } from "./cloud-sync.mjs?v=simple-1";
 let cloud = null;
 let lastUpdated = {};
 const updatedText = name => {
@@ -235,21 +230,10 @@ const STORES = [
 ];
 
 /* ===== 狀態 ===== */
-const KEY = 'deliveryTally_v1';
-const legacy = load();
 let state = {store:'ruige', names:[], stores:{}};
 let activeName = null;
 let pending = []; // 解析預覽結果
 
-function load(){
-  let s = null;
-  try { s = JSON.parse(localStorage.getItem(KEY)); } catch(e) {}
-  s = s || {};
-  s.store = STORES.some(x => x.id === s.store) ? s.store : STORES[0].id;
-  s.names = s.names || [];
-  s.stores = s.stores || {};
-  return s;
-}
 function save(){ if (cloud) cloud.changed(); }
 function sd(){ // 目前店家的資料
   if (!state.stores[state.store]) state.stores[state.store] = { custom: [], orders: [] };
@@ -616,7 +600,7 @@ document.addEventListener('change', e => {
 });
 
 
-cloud = createCloudSync({getState: () => state, setState: value => {state = value;}, setUpdated: value => {lastUpdated = value;}, render, legacy});
+cloud = createCloudSync({getState: () => state, setState: value => {state = value;}, setUpdated: value => {lastUpdated = value;}, render});
 render();
 cloud.start();
 </script>
