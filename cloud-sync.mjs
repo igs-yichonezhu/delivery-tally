@@ -1,10 +1,8 @@
 import {toRecords, fromRecords, diff, applyPatch} from './shared.mjs';
 const API = 'https://delivery-tally-api.yichonezhu.workers.dev';
-const CODE_KEY = 'deliveryTally_cloud_code_v1';
 const DRAFT_KEY = 'deliveryTally_cloud_draft_v1';
 export function createCloudSync({getState, setState, setUpdated = () => {}, render, legacy}) {
   const $ = id => document.getElementById(id);
-  let code = sessionStorage.getItem(CODE_KEY) || '';
   let base = {}, pending = null, connected = false, sending = false, blocked = false, timer;
   let restored = null;
   try { restored = JSON.parse(sessionStorage.getItem(DRAFT_KEY)); } catch {}
@@ -22,7 +20,7 @@ export function createCloudSync({getState, setState, setUpdated = () => {}, rend
   }
   async function request(method = 'GET', payload) {
     const response = await fetch(API + '/state', {
-      method, headers:{Authorization:'Bearer ' + code, ...(payload ? {'Content-Type':'application/json'} : {})},
+      method, headers:payload ? {'Content-Type':'application/json'} : {},
       body:payload ? JSON.stringify(payload) : undefined, cache:'no-store', signal:AbortSignal.timeout(30000),
     });
     const result = await response.json();
@@ -80,13 +78,9 @@ export function createCloudSync({getState, setState, setUpdated = () => {}, rend
   function changed() { if (!connected) return; persist(); status('有修改尚未儲存…'); schedule(); }
   async function connect() {
     if (sending) return;
-    const entered = $('syncCode').value.trim();
-    if (entered) code = entered;
-    if (!code) { status('請輸入團隊共用通行碼'); return; }
-    lock(true); sending = true; $('syncConnect').disabled = true; status('連接雲端…');
+    lock(true); sending = true; status('連接雲端…');
     try {
       const remote = await request();
-      sessionStorage.setItem(CODE_KEY, code); $('syncCode').value = ''; $('syncLogin').hidden = true; $('syncTools').hidden = false;
       connected = true;
       if (restored && (restored.pending || diff(restored.base, restored.records).length)) {
         base = restored.base; pending = restored.pending; apply(restored.records, remote.updated); restored = null;
@@ -95,18 +89,10 @@ export function createCloudSync({getState, setState, setUpdated = () => {}, rend
       lock(false); persist();
       $('syncImport').hidden = !Object.keys(toRecords(legacy)).length;
     } catch (error) { status(error.message || '無法連接雲端', true); }
-    finally { sending = false; $('syncConnect').disabled = false; }
+    finally { sending = false; }
     if (connected && hasChanges()) await flush();
   }
-  $('syncLogin').onsubmit = e => {e.preventDefault(); connect();};
-  $('syncLogout').onclick = () => {
-    if (sending) return;
-    connected = false; code = ''; sessionStorage.removeItem(CODE_KEY); lock(true);
-    $('syncLogin').hidden = false; $('syncTools').hidden = true;
-    if (hasChanges()) restored = {base, records:records(), pending};
-    status('請輸入新的團隊共用通行碼');
-  };
-  $('syncRetry').onclick = () => { if (hasChanges()) flush(); else refresh(); };
+  $('syncRetry').onclick = () => { if (!connected) connect(); else if (hasChanges()) flush(); else refresh(); };
   $('syncReload').onclick = async () => {
     if (sending || !confirm('重新載入雲端資料會放棄此頁未送出的修改。需要時請先下載備份。確定繼續？')) return;
     sending = true;
@@ -128,5 +114,5 @@ export function createCloudSync({getState, setState, setUpdated = () => {}, rend
   };
   window.addEventListener('beforeunload', e => {if (connected && hasChanges()) {e.preventDefault(); e.returnValue = '';}});
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
-  return {changed, start() {lock(true); if(code) connect(); else status('輸入共用通行碼，讀取團隊訂單'); setInterval(refresh, 3000);}};
+  return {changed, start() {lock(true); connect(); setInterval(refresh, 3000);}};
 }

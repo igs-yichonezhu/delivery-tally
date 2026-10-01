@@ -111,14 +111,8 @@ textarea{width:100%;min-height:150px;resize:vertical;margin-top:8px}
 </header>
 
 <section class="card" style="max-width:1168px;margin:16px auto 0" aria-label="雲端同步">
-  <form id="syncLogin" class="row">
-    <label for="syncCode">團隊共用通行碼</label>
-    <input id="syncCode" type="password" autocomplete="current-password" style="font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:8px">
-    <button id="syncConnect" class="primary" type="submit">連接雲端</button>
-  </form>
-  <div id="syncTools" hidden>
+  <div id="syncTools">
     <button id="syncRetry">重試同步</button>
-    <button id="syncLogout">更換通行碼</button>
     <button id="syncExport">下載備份</button>
     <button id="syncImport" hidden>匯入此瀏覽器原有資料</button>
     <button id="syncReload" hidden>放棄草稿並重新載入</button>
@@ -190,7 +184,7 @@ textarea{width:100%;min-height:150px;resize:vertical;margin-top:8px}
     <section class="card">
       <h2>訂單明細 <span class="sub">點名字可切換編輯</span></h2>
       <div style="overflow-x:auto"><table>
-        <thead><tr><th>名字</th><th>品項</th><th class="num">金額</th><th>付款</th><th></th><th>最後更新時間<br><span class="hint">台北時間</span></th></tr></thead>
+        <thead><tr><th>名字</th><th>品項</th><th class="num">金額</th><th>付款</th><th></th><th>最後更新</th></tr></thead>
         <tbody id="orderBody"></tbody>
       </table></div>
     </section>
