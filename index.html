@@ -20,6 +20,8 @@
   }
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
+.updated-time{font-size:12px;color:var(--muted);min-width:118px;font-variant-numeric:tabular-nums}
 body{margin:0;background:var(--bg);color:var(--ink);
   font-family:"Noto Sans TC","Microsoft JhengHei","PingFang TC",system-ui,sans-serif;font-size:15px;line-height:1.5}
 header{background:var(--brand);color:var(--brand-ink);padding:12px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
@@ -108,7 +110,22 @@ textarea{width:100%;min-height:150px;resize:vertical;margin-top:8px}
   <span id="headerSum"></span>
 </header>
 
-<main>
+<section class="card" style="max-width:1168px;margin:16px auto 0" aria-label="雲端同步">
+  <form id="syncLogin" class="row">
+    <label for="syncCode">團隊共用通行碼</label>
+    <input id="syncCode" type="password" autocomplete="current-password" style="font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:8px">
+    <button id="syncConnect" class="primary" type="submit">連接雲端</button>
+  </form>
+  <div id="syncTools" hidden>
+    <button id="syncRetry">重試同步</button>
+    <button id="syncLogout">更換通行碼</button>
+    <button id="syncExport">下載備份</button>
+    <button id="syncImport" hidden>匯入此瀏覽器原有資料</button>
+    <button id="syncReload" hidden>放棄草稿並重新載入</button>
+  </div>
+  <div id="syncStatus" role="status" aria-live="polite" class="hint" style="margin-top:6px">正在啟動雲端同步…</div>
+</section>
+<main inert>
   <div class="col">
     <section class="card">
       <h2>點餐 <span class="sub">選人 → 點菜單，即時加入</span></h2>
@@ -172,16 +189,23 @@ textarea{width:100%;min-height:150px;resize:vertical;margin-top:8px}
 
     <section class="card">
       <h2>訂單明細 <span class="sub">點名字可切換編輯</span></h2>
-      <table>
-        <thead><tr><th>名字</th><th>品項</th><th class="num">金額</th><th>付款</th><th></th></tr></thead>
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>名字</th><th>品項</th><th class="num">金額</th><th>付款</th><th></th><th>最後更新時間<br><span class="hint">台北時間</span></th></tr></thead>
         <tbody id="orderBody"></tbody>
-      </table>
+      </table></div>
     </section>
   </div>
 </main>
 <div class="toast" id="toast"></div>
 
-<script>
+<script type="module">
+import { createCloudSync } from "./cloud-sync.mjs";
+let cloud = null;
+let lastUpdated = {};
+const updatedText = name => {
+  const value = lastUpdated[JSON.stringify(["order", state.store, name])];
+  return value ? new Date(value).toLocaleString("zh-TW", {timeZone:"Asia/Taipei",hour12:false}) : "尚未同步";
+};
 /* ===== 店家菜單 =====
    新增店家：在 STORES 陣列加一筆 { id, name, categories:[{ title, items:[{name, price, alias?}] }] }
    alias 是貼文字匯入時可辨識的別名。 */
@@ -218,7 +242,8 @@ const STORES = [
 
 /* ===== 狀態 ===== */
 const KEY = 'deliveryTally_v1';
-let state = load();
+const legacy = load();
+let state = {store:'ruige', names:[], stores:{}};
 let activeName = null;
 let pending = []; // 解析預覽結果
 
@@ -231,7 +256,7 @@ function load(){
   s.stores = s.stores || {};
   return s;
 }
-function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e) {} }
+function save(){ if (cloud) cloud.changed(); }
 function sd(){ // 目前店家的資料
   if (!state.stores[state.store]) state.stores[state.store] = { custom: [], orders: [] };
   const d = state.stores[state.store];
@@ -399,7 +424,8 @@ function render(){
       <td class="num">${lineTotal(o)}</td>
       <td><button class="paid ${o.paid ? 'yes' : 'no'}" data-paid="${esc(o.name)}">${o.paid ? '已付' : '未付'}</button></td>
       <td><button class="ghost" title="刪除" data-del="${esc(o.name)}">✕</button></td>
-    </tr>`).join('') : '<tr><td colspan="5" class="empty">還沒有訂單</td></tr>';
+      <td class="updated-time">${esc(updatedText(o.name))}</td>
+    </tr>`).join('') : '<tr><td colspan="6" class="empty">還沒有訂單</td></tr>';
 
   // 管理
   document.getElementById('manageNames').innerHTML = state.names.length
@@ -594,9 +620,11 @@ document.addEventListener('change', e => {
   if (t.dataset.pp) renderPreview();
   if (t.dataset.pr){ const [r, l] = t.dataset.pr.split(',').map(Number); pending[r].lines[l].remember = t.checked; }
 });
-window.addEventListener('storage', e => { if (e.key === KEY){ state = load(); render(); } });
 
+
+cloud = createCloudSync({getState: () => state, setState: value => {state = value;}, setUpdated: value => {lastUpdated = value;}, render, legacy});
 render();
+cloud.start();
 </script>
 </body>
 </html>
