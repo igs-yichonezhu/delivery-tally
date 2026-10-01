@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>外送統計</title>
+<style>
+:root{
+  --bg:#f6f2ec; --card:#fff; --ink:#2b2622; --muted:#857a70; --line:#e6ddd2;
+  --brand:#7a2e2e; --brand-ink:#fff; --brand-soft:#f3e4e1;
+  --ok:#2f7d4f; --ok-soft:#e2f2e8; --warn:#b5651d; --warn-soft:#fbeedd; --danger:#b3261e;
+  --chip:#f1ebe3;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1b1917; --card:#262321; --ink:#eee7df; --muted:#a39889; --line:#3a3532;
+    --brand:#c46a5f; --brand-ink:#1b1917; --brand-soft:#3b2724;
+    --ok:#6cc58f; --ok-soft:#1f3328; --warn:#e3a35e; --warn-soft:#3a2c1c; --danger:#ef6b62;
+    --chip:#332f2b;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Noto Sans TC","Microsoft JhengHei","PingFang TC",system-ui,sans-serif;font-size:15px;line-height:1.5}
+header{background:var(--brand);color:var(--brand-ink);padding:12px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+header h1{margin:0;font-size:18px;font-weight:700;letter-spacing:.05em}
+header select{font:inherit;padding:4px 8px;border-radius:6px;border:0;background:var(--card);color:var(--ink)}
+header .spacer{flex:1}
+main{max-width:1200px;margin:0 auto;padding:16px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+@media (max-width:860px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.card h2{margin:0 0 10px;font-size:15px;display:flex;align-items:center;gap:8px}
+.card h2 .sub{font-weight:400;color:var(--muted);font-size:13px}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:6px 12px}
+button:hover{border-color:var(--brand)}
+button.primary{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+button.danger{color:var(--danger);border-color:var(--danger)}
+button.ghost{border-color:transparent;background:transparent;padding:2px 6px;color:var(--muted)}
+button.ghost:hover{color:var(--danger)}
+input[type=text],input[type=number],textarea{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+input:focus,textarea:focus{outline:2px solid var(--brand);outline-offset:-1px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border-radius:999px;padding:3px 12px;background:var(--chip);border:1px solid transparent;font-size:14px}
+.chip.has{border-color:var(--ok);color:var(--ok)}
+.chip.active{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+.active-bar{margin:10px 0;padding:8px 12px;border-radius:8px;background:var(--brand-soft);display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-height:42px}
+.active-bar b{color:var(--brand)}
+.cat{margin-top:10px}
+.cat-title{font-size:12px;color:var(--muted);margin-bottom:4px;letter-spacing:.1em}
+.menu{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px}
+.menu button{text-align:left;padding:8px 10px;display:flex;justify-content:space-between;gap:6px;align-items:baseline}
+.menu button .p{color:var(--muted);font-size:13px}
+.menu button.custom{border-style:dashed}
+.mi{position:relative;display:flex}
+.mi>button[data-item]{flex:1;width:100%}
+.mi .x,.mi .ed{position:absolute;top:-7px;right:-7px;width:20px;height:20px;padding:0;border-radius:50%;
+  font-size:12px;line-height:18px;text-align:center;color:var(--muted);background:var(--card);border:1px solid var(--line)}
+.mi .ed{right:16px}
+.mi .x:hover{color:#fff;background:var(--danger);border-color:var(--danger)}
+.mi .ed:hover{color:#fff;background:var(--brand);border-color:var(--brand)}
+.menu:has(button:disabled) button:disabled{opacity:.45;cursor:not-allowed}
+.line-chip{display:inline-flex;align-items:center;gap:2px;background:var(--chip);border-radius:6px;padding:1px 4px 1px 8px;font-size:14px;margin:2px 4px 2px 0}
+.line-chip button{border:0;background:transparent;padding:0 4px;color:var(--muted);line-height:1}
+.line-chip button:hover{color:var(--danger)}
+table{width:100%;border-collapse:collapse}
+th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+th{font-size:12px;color:var(--muted);font-weight:500}
+td.num,th.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+tr.sel td{background:var(--brand-soft)}
+tr.paidrow td{background:var(--ok-soft)}
+tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--brand)}
+td.name{white-space:nowrap;font-weight:600;cursor:pointer}
+.paid{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:999px;font-size:13px;border:1px solid var(--line);white-space:nowrap}
+.paid.yes{background:var(--ok-soft);color:var(--ok);border-color:var(--ok)}
+.paid.no{background:var(--warn-soft);color:var(--warn);border-color:var(--warn)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+@media (max-width:480px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--chip);border-radius:8px;padding:8px 10px}
+.stat .k{font-size:12px;color:var(--muted)}
+.stat .v{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+.stat.ok .v{color:var(--ok)} .stat.warn .v{color:var(--warn)}
+.count-list{display:grid;grid-template-columns:1fr auto;gap:2px 16px;font-size:15px}
+.count-list .q{font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+.empty{color:var(--muted);text-align:center;padding:16px 0}
+details summary{cursor:pointer;font-weight:600}
+textarea{width:100%;min-height:150px;resize:vertical;margin-top:8px}
+.preview{margin-top:8px;font-size:14px}
+.preview .pl{padding:6px 0;border-bottom:1px dashed var(--line)}
+.tag{font-size:12px;border-radius:4px;padding:0 6px;margin-left:4px}
+.tag.ok{background:var(--ok-soft);color:var(--ok)}
+.tag.warn{background:var(--warn-soft);color:var(--warn)}
+.tag.err{background:var(--warn-soft);color:var(--danger)}
+.preview input[type=number]{width:80px;padding:2px 6px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:8px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+.hint{color:var(--muted);font-size:13px}
+.manage-list{display:flex;flex-direction:column;gap:4px;margin-top:8px}
+.manage-list .row{justify-content:space-between;border-bottom:1px solid var(--line);padding:2px 0}
+</style>
+</head>
+<body>
+<header>
+  <h1>外送統計</h1>
+  <select id="storeSel" aria-label="店家"></select>
+  <span class="spacer"></span>
+  <span id="headerSum"></span>
+</header>
+
+<main>
+  <div class="col">
+    <section class="card">
+      <h2>點餐 <span class="sub">選人 → 點菜單，即時加入</span></h2>
+      <div class="row">
+        <input type="text" id="nameInput" placeholder="輸入名字後按 Enter" list="nameList" style="flex:1;min-width:140px">
+        <datalist id="nameList"></datalist>
+        <button id="nameGo" class="primary">選這個人</button>
+      </div>
+      <div class="chips" id="nameChips" style="margin-top:8px"></div>
+      <div class="active-bar" id="activeBar"></div>
+      <div id="menuArea"></div>
+      <div class="cat">
+        <div class="cat-title">新增自訂品項（期間限定／菜單外）</div>
+        <div class="row">
+          <input type="text" id="cName" placeholder="品名，如 蜂蜜麻麻嫩雞飯" style="flex:1;min-width:140px">
+          <input type="number" id="cPrice" placeholder="價格" style="width:90px" min="0">
+          <button id="cAdd">新增</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <details id="pasteBox">
+        <summary>貼上文字匯入</summary>
+        <p class="hint" style="margin:6px 0 0">一行一人：<code>名字 品項(+品項) 價格</code>，價格可省略。例：<code>阿蝶 雙倍嫩雞飯+蘿蔔湯 230</code>、<code>May 烤雞飯x2</code></p>
+        <textarea id="pasteText" placeholder="May  烤雞飯     140&#10;阿緯 雙蛋嫩雞飯 140&#10;景柔 蜂蜜麻麻嫩雞飯 160"></textarea>
+        <div class="row" style="margin-top:8px">
+          <button id="parseBtn">解析預覽</button>
+          <label class="hint"><input type="checkbox" id="overwrite" checked> 同名的人覆蓋原本的訂單</label>
+        </div>
+        <div class="preview" id="preview"></div>
+      </details>
+    </section>
+
+    <section class="card">
+      <details>
+        <summary>管理名單與自訂品項</summary>
+        <div class="cat-title" style="margin-top:10px">常用名單</div>
+        <div class="manage-list" id="manageNames"></div>
+        <div class="cat-title" style="margin-top:12px">本店自訂品項</div>
+        <div class="manage-list" id="manageCustom"></div>
+        <div class="cat-title" style="margin-top:12px">已刪除的原菜單品項</div>
+        <div class="manage-list" id="manageHidden"></div>
+      </details>
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="card">
+      <h2>統計</h2>
+      <div class="stats" id="stats"></div>
+      <div class="cat-title">品項數量</div>
+      <div class="count-list" id="counts"></div>
+      <div class="row" style="margin-top:12px">
+        <button id="copyCount" class="primary">複製品項統計</button>
+        <button id="copyDetail">複製明細</button>
+        <span class="spacer" style="flex:1"></span>
+        <button id="clearBtn" class="danger">清除訂單</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>訂單明細 <span class="sub">點名字可切換編輯</span></h2>
+      <table>
+        <thead><tr><th>名字</th><th>品項</th><th class="num">金額</th><th>付款</th><th></th></tr></thead>
+        <tbody id="orderBody"></tbody>
+      </table>
+    </section>
+  </div>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===== 店家菜單 =====
+   新增店家：在 STORES 陣列加一筆 { id, name, categories:[{ title, items:[{name, price, alias?}] }] }
+   alias 是貼文字匯入時可辨識的別名。 */
+const STORES = [
+  {
+    id: 'ruige',
+    name: '瑞哥雞肉飯',
+    categories: [
+      { title: '來店必點', items: [
+        { name: '嫩雞扒蛋飯', price: 110, alias: ['扒蛋飯'] },
+        { name: '好吃嫩雞飯', price: 130, alias: ['嫩雞飯'] },
+        { name: '好吃烤雞飯', price: 140, alias: ['烤雞飯'] },
+      ]},
+      { title: '老饕優惠', items: [
+        { name: '雙蛋嫩雞飯', price: 140, alias: ['雙蛋'] },
+        { name: '雙倍嫩雞飯', price: 190, alias: ['雙倍'] },
+        { name: '嫩烤雙拼飯', price: 200, alias: ['雙拼', '雙拼飯'] },
+      ]},
+      { title: '湯品', items: [
+        { name: '蘿蔔湯', price: 40, alias: ['菜頭湯'] },
+        { name: '貢丸湯', price: 40 },
+      ]},
+      { title: '單點', items: [
+        { name: '燙青菜', price: 40, alias: ['青菜'] },
+        { name: '貢丸一顆', price: 10, alias: ['貢丸'] },
+        { name: '荷包蛋', price: 15 },
+        { name: '雞油飯', price: 25 },
+        { name: '嫩雞一份', price: 75 },
+        { name: '烤雞一份', price: 85 },
+      ]},
+    ],
+  },
+];
+
+/* ===== 狀態 ===== */
+const KEY = 'deliveryTally_v1';
+let state = load();
+let activeName = null;
+let pending = []; // 解析預覽結果
+
+function load(){
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem(KEY)); } catch(e) {}
+  s = s || {};
+  s.store = STORES.some(x => x.id === s.store) ? s.store : STORES[0].id;
+  s.names = s.names || [];
+  s.stores = s.stores || {};
+  return s;
+}
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e) {} }
+function sd(){ // 目前店家的資料
+  if (!state.stores[state.store]) state.stores[state.store] = { custom: [], orders: [] };
+  const d = state.stores[state.store];
+  d.hidden = d.hidden || []; // 被刪除（隱藏）的原菜單品項
+  d.edits = d.edits || {};   // 原菜單品項的改名／改價 { 原品名: {name, price} }
+  return d;
+}
+const store = () => STORES.find(s => s.id === state.store);
+function eff(i){ // 套用編輯後的品項，orig 為原品名
+  const e = sd().edits[i.name];
+  return e ? { ...i, name: e.name, price: e.price, orig: i.name, alias: [...(i.alias || []), i.name] } : { ...i, orig: i.name };
+}
+const visible = items => items.filter(i => !sd().hidden.includes(i.name)).map(eff);
+function allItems(){
+  const list = [];
+  store().categories.forEach(c => visible(c.items).forEach(i => list.push(i)));
+  sd().custom.forEach(i => list.push(i));
+  return list;
+}
+const money = n => '$' + n.toLocaleString();
+const lineTotal = o => o.items.reduce((s, l) => s + l.p * l.q, 0);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function rememberName(n){
+  if (n && !state.names.includes(n)) state.names.push(n);
+}
+function getOrder(name, create){
+  let o = sd().orders.find(o => o.name === name);
+  if (!o && create){ o = { name, items: [], paid: false }; sd().orders.push(o); }
+  return o;
+}
+function addItem(name, item, qty = 1){
+  const o = getOrder(name, true);
+  const l = o.items.find(l => l.n === item.name && l.p === item.price);
+  if (l) l.q += qty; else o.items.push({ n: item.name, p: item.price, q: qty });
+}
+
+/* ===== 操作 ===== */
+function setActive(n){
+  n = (n || '').trim();
+  if (!n) return;
+  rememberName(n);
+  activeName = n;
+  save(); render();
+}
+function removeLine(name, idx){
+  const o = getOrder(name);
+  if (!o) return;
+  o.items[idx].q -= 1;
+  if (o.items[idx].q <= 0) o.items.splice(idx, 1);
+  if (!o.items.length) sd().orders = sd().orders.filter(x => x !== o);
+  save(); render();
+}
+function removeOrder(name){
+  if (!confirm(`刪除 ${name} 的訂單？`)) return;
+  sd().orders = sd().orders.filter(o => o.name !== name);
+  save(); render();
+}
+function togglePaid(name){
+  const o = getOrder(name); if (!o) return;
+  o.paid = !o.paid; save(); render();
+}
+
+function editItem(key, isCustom){
+  const cur = allItems().find(i => (i.orig || i.name) === key);
+  if (!cur) return;
+  let name = prompt('品名', cur.name);
+  if (name == null) return;
+  name = name.trim();
+  if (!name) return toast('品名不能空白');
+  const ps = prompt(`「${name}」的價格`, cur.price);
+  if (ps == null) return;
+  const price = parseInt(ps, 10);
+  if (!(price >= 0)) return toast('價格要是數字');
+  if (name === cur.name && price === cur.price) return;
+  if (name !== cur.name && allItems().some(i => i.name === name)) return toast('已有同名品項');
+
+  if (isCustom){
+    const c = sd().custom.find(i => i.name === key);
+    c.name = name; c.price = price;
+  } else {
+    const base = store().categories.flatMap(c => c.items).find(i => i.name === key);
+    if (base.name === name && base.price === price) delete sd().edits[key];
+    else sd().edits[key] = { name, price };
+  }
+  // 已點的訂單要不要跟著改
+  const hits = [];
+  sd().orders.forEach(o => o.items.forEach(l => { if (l.n === cur.name && l.p === cur.price) hits.push(l); }));
+  if (hits.length){
+    const n = hits.reduce((s, l) => s + l.q, 0);
+    if (confirm(`目前訂單裡有 ${n} 份「${cur.name} ${cur.price}」，要一起改成「${name} ${price}」嗎？\n（按取消則已點的維持原價）`))
+      hits.forEach(l => { l.n = name; l.p = price; });
+  }
+  save(); render(); toast('已更新');
+}
+
+/* ===== 統計 ===== */
+function counts(){
+  const order = allItems().map(i => i.name);
+  const m = new Map();
+  sd().orders.forEach(o => o.items.forEach(l => m.set(l.n, (m.get(l.n) || 0) + l.q)));
+  return [...m.entries()].sort((a, b) => {
+    const ia = order.indexOf(a[0]), ib = order.indexOf(b[0]);
+    return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
+  });
+}
+function totals(){
+  const os = sd().orders;
+  let total = 0, paid = 0;
+  os.forEach(o => { const t = lineTotal(o); total += t; if (o.paid) paid += t; });
+  const qty = os.reduce((s, o) => s + o.items.reduce((a, l) => a + l.q, 0), 0);
+  return { people: os.length, qty, total, paid, unpaid: total - paid };
+}
+const itemText = o => o.items.map(l => l.n + (l.q > 1 ? 'x' + l.q : '')).join('+');
+
+/* ===== 畫面 ===== */
+function render(){
+  const ss = document.getElementById('storeSel');
+  ss.innerHTML = STORES.map(s => `<option value="${s.id}" ${s.id === state.store ? 'selected' : ''}>${esc(s.name)}</option>`).join('');
+
+  const ordered = new Set(sd().orders.map(o => o.name));
+  document.getElementById('nameList').innerHTML = state.names.map(n => `<option value="${esc(n)}">`).join('');
+  document.getElementById('nameChips').innerHTML = state.names.length
+    ? state.names.map(n => `<button class="chip ${ordered.has(n) ? 'has' : ''} ${n === activeName ? 'active' : ''}" data-name="${esc(n)}">${esc(n)}${ordered.has(n) ? ' ✓' : ''}</button>`).join('')
+    : '<span class="hint">還沒有名單，輸入名字後會自動記住</span>';
+
+  // 目前點餐的人
+  const bar = document.getElementById('activeBar');
+  if (!activeName){
+    bar.innerHTML = '<span class="hint">先選一個人，再點下方菜單</span>';
+  } else {
+    const o = getOrder(activeName);
+    const lines = o && o.items.length
+      ? o.items.map((l, i) => `<span class="line-chip">${esc(l.n)}${l.q > 1 ? ' ×' + l.q : ''}<button title="減一" data-rm="${i}">×</button></span>`).join('') + ` <b>${money(lineTotal(o))}</b>`
+      : '<span class="hint">尚未點餐</span>';
+    bar.innerHTML = `<span>正在幫 <b>${esc(activeName)}</b> 點：</span>${lines}`;
+  }
+
+  // 菜單
+  const cats = store().categories.map(c => ({ ...c, items: visible(c.items) })).filter(c => c.items.length);
+  if (sd().custom.length) cats.push({ title: '自訂品項', items: sd().custom, custom: true });
+  document.getElementById('menuArea').innerHTML = cats.map(c => `
+    <div class="cat"><div class="cat-title">${esc(c.title)}</div>
+    <div class="menu">${c.items.map(i => `<div class="mi"><button class="${c.custom ? 'custom' : ''}" data-item="${esc(i.name)}" ${activeName ? '' : 'disabled'}><span>${esc(i.name)}</span><span class="p">${i.price}</span></button><button class="ed" title="編輯品名／價格" data-edit="${esc(i.orig || i.name)}" data-iscustom="${c.custom ? 1 : ''}">✎</button><button class="x" title="刪除品項" data-delitem="${esc(i.orig || i.name)}" data-iscustom="${c.custom ? 1 : ''}">×</button></div>`).join('')}</div></div>`).join('');
+
+  // 統計
+  const t = totals();
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="k">人數</div><div class="v">${t.people}</div></div>
+    <div class="stat"><div class="k">總金額</div><div class="v">${money(t.total)}</div></div>
+    <div class="stat ok"><div class="k">已收</div><div class="v">${money(t.paid)}</div></div>
+    <div class="stat warn"><div class="k">未收</div><div class="v">${money(t.unpaid)}</div></div>`;
+  const cs = counts();
+  document.getElementById('counts').innerHTML = cs.length
+    ? cs.map(([n, q]) => `<span>${esc(n)}</span><span class="q">${q}</span>`).join('') + `<span style="color:var(--muted)">合計</span><span class="q">${t.qty}</span>`
+    : '<span class="empty" style="grid-column:1/-1">還沒有人點餐</span>';
+  document.getElementById('headerSum').textContent = t.people ? `${t.people} 人 · ${money(t.total)}` : '';
+
+  // 明細
+  const body = document.getElementById('orderBody');
+  body.innerHTML = sd().orders.length ? sd().orders.map(o => `
+    <tr class="${o.name === activeName ? 'sel' : ''} ${o.paid ? 'paidrow' : ''}">
+      <td class="name" data-name="${esc(o.name)}">${esc(o.name)}</td>
+      <td>${o.items.map(l => `<span class="line-chip" style="padding-right:8px">${esc(l.n)}${l.q > 1 ? ' ×' + l.q : ''}</span>`).join('')}</td>
+      <td class="num">${lineTotal(o)}</td>
+      <td><button class="paid ${o.paid ? 'yes' : 'no'}" data-paid="${esc(o.name)}">${o.paid ? '已付' : '未付'}</button></td>
+      <td><button class="ghost" title="刪除" data-del="${esc(o.name)}">✕</button></td>
+    </tr>`).join('') : '<tr><td colspan="5" class="empty">還沒有訂單</td></tr>';
+
+  // 管理
+  document.getElementById('manageNames').innerHTML = state.names.length
+    ? state.names.map(n => `<div class="row"><span>${esc(n)}</span><button class="ghost" data-delname="${esc(n)}">移除</button></div>`).join('')
+    : '<span class="hint">無</span>';
+  document.getElementById('manageCustom').innerHTML = sd().custom.length
+    ? sd().custom.map(i => `<div class="row"><span>${esc(i.name)} <span class="hint">${i.price}</span></span><button class="ghost" data-delcustom="${esc(i.name)}">移除</button></div>`).join('')
+    : '<span class="hint">無</span>';
+  document.getElementById('manageHidden').innerHTML = sd().hidden.length
+    ? sd().hidden.map(n => `<div class="row"><span>${esc(n)}</span><button class="ghost" data-restore="${esc(n)}">恢復</button></div>`).join('')
+    : '<span class="hint">無</span>';
+}
+
+/* ===== 貼上解析 ===== */
+const norm = s => s.replace(/\s+/g, '').toLowerCase();
+function matchItem(seg){
+  const s = norm(seg), items = allItems();
+  for (const i of items) if ([i.name, ...(i.alias || [])].some(k => norm(k) === s)) return i;
+  if (s.length >= 2){
+    const hit = items.filter(i => norm(i.name).includes(s));
+    if (hit.length === 1) return hit[0];
+  }
+  return null;
+}
+function parseLine(raw){
+  const line = raw.trim().replace(/[　]/g, ' ');
+  if (!line) return null;
+  let name, rest;
+  const m = line.match(/^(\S+)\s+(.+)$/);
+  if (m){ name = m[1]; rest = m[2]; }
+  else {
+    name = [...state.names].sort((a, b) => b.length - a.length).find(n => line.startsWith(n) && line.length > n.length);
+    if (!name) return { raw, error: '分不出名字和品項（名字後面請空一格）' };
+    rest = line.slice(name.length);
+  }
+  let price = null;
+  const pm = rest.match(/(?:^|[\s$＄])(\d{2,5})\s*元?\s*$/);
+  if (pm){ price = +pm[1]; rest = rest.slice(0, pm.index); }
+  const segs = rest.split(/[+＋,，、&\s]+/).filter(Boolean);
+  const lines = [];
+  for (let seg of segs){
+    let q = 1;
+    const qm = seg.match(/^(.+?)[x×*＊](\d+)$/i) || seg.match(/^(.+?)(\d+)份$/);
+    if (qm){ seg = qm[1]; q = +qm[2]; }
+    const it = matchItem(seg);
+    lines.push(it ? { n: it.name, p: it.price, q, known: true } : { n: seg, p: null, q, known: false, remember: true });
+  }
+  if (!lines.length) return { raw, error: '沒有品項' };
+  // 只有一個未知品項且有總價 → 推算價格
+  const unk = lines.filter(l => !l.known);
+  if (unk.length === 1 && price != null){
+    const knownSum = lines.filter(l => l.known).reduce((s, l) => s + l.p * l.q, 0);
+    const diff = (price - knownSum) / unk[0].q;
+    if (diff > 0 && Number.isInteger(diff)) unk[0].p = diff;
+  }
+  return { raw, name, price, lines };
+}
+function renderPreview(){
+  const el = document.getElementById('preview');
+  if (!pending.length){ el.innerHTML = ''; return; }
+  let ok = 0;
+  el.innerHTML = pending.map((r, ri) => {
+    if (r.error) return `<div class="pl">${esc(r.raw)} <span class="tag err">${r.error}</span></div>`;
+    const sum = r.lines.reduce((s, l) => s + (l.p || 0) * l.q, 0);
+    const missing = r.lines.some(l => l.p == null);
+    if (!missing) ok++;
+    const parts = r.lines.map((l, li) => l.known
+      ? `${esc(l.n)}${l.q > 1 ? '×' + l.q : ''}`
+      : `<span class="tag warn">新品項</span> ${esc(l.n)}${l.q > 1 ? '×' + l.q : ''} $<input type="number" min="0" value="${l.p ?? ''}" data-pp="${ri},${li}">
+         <label class="hint"><input type="checkbox" data-pr="${ri},${li}" ${l.remember ? 'checked' : ''}>記住</label>`).join(' + ');
+    let tag = missing ? '<span class="tag err">請填價格</span>' : '<span class="tag ok">OK</span>';
+    if (!missing && r.price != null && r.price !== sum) tag = `<span class="tag warn">寫 ${r.price}，菜單算 ${sum}</span>`;
+    return `<div class="pl"><b>${esc(r.name)}</b>　${parts}　= ${missing ? '?' : sum} ${tag}</div>`;
+  }).join('') + `<div class="row" style="margin-top:8px"><button class="primary" id="importBtn">匯入 ${ok} 筆</button><span class="hint">有錯或缺價格的行會略過</span></div>`;
+}
+function doImport(){
+  const overwrite = document.getElementById('overwrite').checked;
+  let n = 0;
+  const done = new Set();
+  pending.forEach(r => {
+    if (r.error || r.lines.some(l => l.p == null)) return;
+    rememberName(r.name);
+    if (overwrite && !done.has(r.name)){
+      sd().orders = sd().orders.filter(o => o.name !== r.name);
+      done.add(r.name);
+    }
+    r.lines.forEach(l => {
+      if (!l.known && l.remember && !sd().custom.some(c => c.name === l.n)) sd().custom.push({ name: l.n, price: l.p });
+      addItem(r.name, { name: l.n, price: l.p }, l.q);
+    });
+    n++;
+  });
+  pending = [];
+  document.getElementById('pasteText').value = '';
+  save(); render(); renderPreview();
+  toast(`已匯入 ${n} 筆`);
+}
+
+/* ===== 複製 ===== */
+const vw = s => [...s].reduce((w, c) => w + (c.charCodeAt(0) > 255 ? 2 : 1), 0);
+const pad = (s, w) => s + ' '.repeat(Math.max(0, w - vw(s)));
+function countText(){
+  const t = totals();
+  return `${store().name}　共 ${t.qty} 份　${money(t.total)}\n` + counts().map(([n, q]) => `${n} ${q}`).join('\n');
+}
+function detailText(){
+  const os = sd().orders, t = totals();
+  const nw = Math.max(...os.map(o => vw(o.name)), 0) + 1;
+  const iw = Math.max(...os.map(o => vw(itemText(o))), 0) + 1;
+  const unpaid = os.filter(o => !o.paid).map(o => o.name);
+  return `${store().name}　${t.people} 人　${money(t.total)}\n`
+    + os.map(o => `${pad(o.name, nw)}${pad(itemText(o), iw)}${lineTotal(o)}${o.paid ? ' ✔' : ''}`).join('\n')
+    + `\n\n` + counts().map(([n, q]) => `${n} ${q}`).join('\n')
+    + (unpaid.length ? `\n\n未付款：${unpaid.join('、')}（${money(t.unpaid)}）` : '\n\n全部已付款');
+}
+async function copy(text){
+  try { await navigator.clipboard.writeText(text); }
+  catch(e){
+    const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy'); ta.remove();
+  }
+  toast('已複製');
+}
+function toast(msg){
+  const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 1400);
+}
+
+/* ===== 事件 ===== */
+const $ = id => document.getElementById(id);
+$('storeSel').onchange = e => { state.store = e.target.value; activeName = null; save(); render(); };
+$('nameGo').onclick = () => { setActive($('nameInput').value); $('nameInput').value = ''; };
+$('nameInput').onkeydown = e => { if (e.key === 'Enter' && !e.isComposing){ $('nameGo').click(); } };
+$('cAdd').onclick = () => {
+  const name = $('cName').value.trim(), price = parseInt($('cPrice').value, 10);
+  if (!name || !(price >= 0)) return toast('請填品名和價格');
+  if (allItems().some(i => i.name === name)) return toast('已有這個品項');
+  sd().custom.push({ name, price });
+  $('cName').value = ''; $('cPrice').value = '';
+  save(); render();
+};
+$('parseBtn').onclick = () => { pending = $('pasteText').value.split(/\r?\n/).map(parseLine).filter(Boolean); renderPreview(); };
+$('copyCount').onclick = () => sd().orders.length ? copy(countText()) : toast('沒有訂單');
+$('copyDetail').onclick = () => sd().orders.length ? copy(detailText()) : toast('沒有訂單');
+$('clearBtn').onclick = () => {
+  if (!sd().orders.length) return toast('沒有訂單');
+  if (!confirm(`確定清除「${store().name}」全部 ${sd().orders.length} 筆訂單？\n（常用名單與自訂品項會保留）`)) return;
+  sd().orders = []; activeName = null; save(); render(); toast('已清除');
+};
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-name],[data-item],[data-rm],[data-paid],[data-del],[data-delname],[data-delcustom],[data-delitem],[data-edit],[data-restore],#importBtn');
+  if (!b) return;
+  const d = b.dataset;
+  if (b.id === 'importBtn') return doImport();
+  if (d.rm != null) return removeLine(activeName, +d.rm);
+  if (d.delitem != null){
+    if (!confirm(`從菜單刪除「${d.delitem}」？\n（已點的訂單不受影響${d.iscustom ? '' : '，可在「管理」裡恢復'}）`)) return;
+    if (d.iscustom) sd().custom = sd().custom.filter(i => i.name !== d.delitem);
+    else sd().hidden.push(d.delitem);
+    save(); return render();
+  }
+  if (d.edit != null) return editItem(d.edit, !!d.iscustom);
+  if (d.restore != null){
+    sd().hidden = sd().hidden.filter(n => n !== d.restore);
+    save(); return render();
+  }
+  if (d.item != null){
+    const it = allItems().find(i => i.name === d.item);
+    if (it && activeName){ addItem(activeName, it); save(); render(); }
+    return;
+  }
+  if (d.paid != null) return togglePaid(d.paid);
+  if (d.del != null) return removeOrder(d.del);
+  if (d.delname != null){
+    state.names = state.names.filter(n => n !== d.delname);
+    if (activeName === d.delname) activeName = null;
+    save(); return render();
+  }
+  if (d.delcustom != null){
+    sd().custom = sd().custom.filter(i => i.name !== d.delcustom);
+    save(); return render();
+  }
+  if (d.name != null) return setActive(d.name);
+});
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.dataset.pp){ const [r, l] = t.dataset.pp.split(',').map(Number); const v = parseInt(t.value, 10); pending[r].lines[l].p = v >= 0 ? v : null; }
+});
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset.pp) renderPreview();
+  if (t.dataset.pr){ const [r, l] = t.dataset.pr.split(',').map(Number); pending[r].lines[l].remember = t.checked; }
+});
+window.addEventListener('storage', e => { if (e.key === KEY){ state = load(); render(); } });
+
+render();
+</script>
+</body>
+</html>
