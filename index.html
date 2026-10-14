@@ -52,7 +52,34 @@
     </div>
   </section>
 
-  <div class="col">
+  <div class="ordering-layout">
+    <aside class="card order-workspace" id="orderWorkspace" aria-label="訂單管理">
+      <div class="order-tabs" role="tablist" aria-label="訂單檢視">
+        <button type="button" id="summaryTab" role="tab" aria-selected="false" aria-controls="summary" tabindex="-1" data-order-tab="summary">訂單統計</button>
+        <button type="button" id="ordersTab" role="tab" aria-selected="true" aria-controls="orders" tabindex="0" data-order-tab="orders">訂單明細 <span class="order-count" id="orderCount" aria-hidden="true">0</span></button>
+      </div>
+      <section class="order-panel summary-card" id="summary" role="tabpanel" aria-labelledby="summaryTab" tabindex="0" hidden>
+        <div class="section-heading"><h2><span class="section-number">02</span> 訂單統計</h2><span class="section-note">每一份，都幫你算好</span></div>
+        <div class="stats" id="stats"></div>
+        <div class="cat-title">品項數量</div>
+        <div class="count-list" id="counts"></div>
+        <div class="copy-actions">
+          <button id="copyCount" class="primary">複製品項統計</button>
+          <button id="copyDetail">複製明細</button>
+        </div>
+        <div class="clear-action"><button id="clearBtn" class="danger">清除訂單</button></div>
+        <p class="summary-footnote">點餐與付款狀態會自動同步至雲端</p>
+      </section>
+      <section class="order-panel orders-card" id="orders" role="tabpanel" aria-labelledby="ordersTab" tabindex="0">
+        <div class="section-heading"><h2><span class="section-number">03</span> 訂單明細</h2><span class="section-note">點名字加點・點付款切換</span></div>
+        <div class="order-list"><table>
+          <thead class="sr-only"><tr><th scope="col">名字</th><th scope="col">品項</th><th scope="col">金額</th><th scope="col">付款</th><th scope="col">操作</th><th scope="col">最後更新</th></tr></thead>
+          <tbody id="orderBody"></tbody>
+        </table></div>
+      </section>
+    </aside>
+
+  <div class="col ordering-column">
     <section class="card ordering-card" id="ordering">
       <div class="section-heading"><h2><span class="section-number">01</span> 選人・點餐</h2><span class="section-tag">MENU</span></div>
       <label class="field-label" for="nameInput">這一餐，幫誰點？</label>
@@ -62,7 +89,7 @@
         <button id="nameGo" class="primary">選這個人</button>
       </div>
       <div class="chips" id="nameChips" aria-label="常用訂餐名單"></div>
-      <div class="active-bar" id="activeBar"></div>
+      <div class="active-bar" id="activeBar" tabindex="-1"></div>
       <div id="menuArea"></div>
       <div class="cat custom-entry">
         <div class="cat-title">新增自訂品項（期間限定／菜單外）</div>
@@ -100,28 +127,7 @@
     </section>
   </div>
 
-  <div class="col">
-    <section class="card summary-card" id="summary">
-      <div class="section-heading"><h2><span class="section-number">02</span> 訂單統計</h2><span class="section-note">每一份，都幫你算好</span></div>
-      <div class="stats" id="stats"></div>
-      <div class="cat-title">品項數量</div>
-      <div class="count-list" id="counts"></div>
-      <div class="copy-actions">
-        <button id="copyCount" class="primary">複製品項統計</button>
-        <button id="copyDetail">複製明細</button>
-      </div>
-      <div class="clear-action"><button id="clearBtn" class="danger">清除訂單</button></div>
-      <p class="summary-footnote">點餐與付款狀態會自動同步至雲端</p>
-    </section>
   </div>
-
-    <section class="card orders-card" id="orders">
-      <div class="section-heading"><h2><span class="section-number">03</span> 訂單明細</h2><span class="section-note">點名字編輯餐點，點付款狀態切換</span></div>
-      <div class="table-scroll" tabindex="0" role="region" aria-label="訂單明細，可左右捲動"><table>
-        <thead><tr><th scope="col">名字</th><th scope="col">品項</th><th scope="col" class="num">金額</th><th scope="col">付款</th><th scope="col"><span class="sr-only">操作</span></th><th scope="col">最後更新</th></tr></thead>
-        <tbody id="orderBody"></tbody>
-      </table></div>
-    </section>
 </main>
 <footer class="page-footer"><span>瑞哥雞肉飯 · 一起訂餐</span><span>好好吃飯，也好好照顧每一份訂單。</span></footer>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -321,6 +327,7 @@ function render(){
 
   // 統計
   const t = totals();
+  document.getElementById('orderCount').textContent = t.people;
   document.getElementById('stats').innerHTML = `
     <div class="stat"><div class="k">人數</div><div class="v">${t.people}</div></div>
     <div class="stat"><div class="k">總金額</div><div class="v">${money(t.total)}</div></div>
@@ -337,11 +344,11 @@ function render(){
   body.innerHTML = sd().orders.length ? sd().orders.map(o => `
     <tr class="${o.name === activeName ? 'sel' : ''} ${o.paid ? 'paidrow' : ''}">
       <td class="name"><button class="order-name" data-name="${esc(o.name)}" aria-label="編輯${esc(o.name)}的訂單">${esc(o.name)}</button></td>
-      <td>${o.items.map(l => `<span class="line-chip" style="padding-right:8px">${esc(l.n)}${l.q > 1 ? ' ×' + l.q : ''}</span>`).join('')}</td>
-      <td class="num">${lineTotal(o)}</td>
-      <td><button class="paid ${o.paid ? 'yes' : 'no'}" data-paid="${esc(o.name)}" aria-label="${esc(o.name)}${o.paid ? '已付，切換為未付' : '未付，切換為已付'}">${o.paid ? '已付' : '未付'}</button></td>
-      <td><button class="ghost" title="刪除" aria-label="刪除${esc(o.name)}的訂單" data-del="${esc(o.name)}">✕</button></td>
-      <td class="updated-time">${esc(updatedText(o.name))}</td>
+      <td class="order-items">${o.items.map(l => `<span class="line-chip">${esc(l.n)}${l.q > 1 ? ' ×' + l.q : ''}</span>`).join('')}</td>
+      <td class="num order-amount">${money(lineTotal(o))}</td>
+      <td class="order-payment"><button class="paid ${o.paid ? 'yes' : 'no'}" data-paid="${esc(o.name)}" aria-label="${esc(o.name)}${o.paid ? '已付，切換為未付' : '未付，切換為已付'}">${o.paid ? '已付' : '未付'}</button></td>
+      <td class="order-delete"><button class="ghost" title="刪除" aria-label="刪除${esc(o.name)}的訂單" data-del="${esc(o.name)}">✕</button></td>
+      <td class="updated-time"><span>更新於 </span>${esc(updatedText(o.name))}</td>
     </tr>`).join('') : '<tr><td colspan="6" class="empty">還沒有訂單</td></tr>';
 
   // 管理
@@ -473,6 +480,55 @@ function toast(msg){
 
 /* ===== 事件 ===== */
 const $ = id => document.getElementById(id);
+
+/* 訂單檢視獨立於雲端資料，切頁不會寫入訂單。 */
+const orderViews = ['summary', 'orders'];
+function showOrderView(view, {focus = false, scroll = false} = {}) {
+  if (!orderViews.includes(view)) return;
+  orderViews.forEach(id => {
+    const selected = id === view;
+    $(id).hidden = !selected;
+    $(id + 'Tab').setAttribute('aria-selected', String(selected));
+    $(id + 'Tab').tabIndex = selected ? 0 : -1;
+  });
+  if (focus) $(view + 'Tab').focus();
+  if (scroll){
+    $(view).scrollTop = 0;
+    $('orderWorkspace').scrollIntoView({behavior:'instant', block:'start'});
+  }
+}
+function orderViewFromHash() {
+  const view = location.hash.slice(1);
+  if (orderViews.includes(view)) showOrderView(view, {scroll:true});
+}
+document.querySelector('.order-tabs').addEventListener('click', e => {
+  const tab = e.target.closest('[data-order-tab]');
+  if (!tab) return;
+  showOrderView(tab.dataset.orderTab);
+  history.replaceState(null, '', '#' + tab.dataset.orderTab);
+});
+document.querySelector('.order-tabs').addEventListener('keydown', e => {
+  const tab = e.target.closest('[data-order-tab]');
+  if (!tab) return;
+  let view;
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') view = orderViews.find(id => id !== tab.dataset.orderTab);
+  else if (e.key === 'Home') view = orderViews[0];
+  else if (e.key === 'End') view = orderViews[1];
+  else return;
+  e.preventDefault();
+  showOrderView(view, {focus:true});
+  history.replaceState(null, '', '#' + view);
+});
+document.addEventListener('click', e => {
+  const link = e.target.closest('a[href="#summary"],a[href="#orders"]');
+  if (!link || e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+  e.preventDefault();
+  showOrderView(link.hash.slice(1), {scroll:true});
+  history.pushState(null, '', link.hash);
+});
+window.addEventListener('hashchange', orderViewFromHash);
+window.addEventListener('load', orderViewFromHash, {once:true});
+
 $('storeSel').onchange = e => { state.store = e.target.value; activeName = null; save(); render(); };
 $('nameGo').onclick = () => { setActive($('nameInput').value); $('nameInput').value = ''; };
 $('nameInput').onkeydown = e => { if (e.key === 'Enter' && !e.isComposing){ $('nameGo').click(); } };
@@ -526,7 +582,15 @@ document.addEventListener('click', e => {
     sd().custom = sd().custom.filter(i => i.name !== d.delcustom);
     save(); return render();
   }
-  if (d.name != null) return setActive(d.name);
+  if (d.name != null){
+    const fromOrder = b.classList.contains('order-name');
+    setActive(d.name);
+    if (fromOrder){
+      $('activeBar').focus({preventScroll:true});
+      $('ordering').scrollIntoView({behavior:'instant', block:'start'});
+    }
+    return;
+  }
 });
 document.addEventListener('input', e => {
   const t = e.target;
@@ -541,6 +605,7 @@ document.addEventListener('change', e => {
 
 cloud = createCloudSync({getState: () => state, setState: value => {state = value;}, setUpdated: value => {lastUpdated = value;}, render});
 render();
+orderViewFromHash();
 cloud.start();
 </script>
 </body>
