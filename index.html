@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#171916">
 <meta name="description" content="瑞哥雞肉飯團體點餐，選名字、點餐點，即時整理訂單、品項數量與付款狀態。">
 <title>瑞哥雞肉飯 · 外送統計</title>
-<link rel="stylesheet" href="./styles.css?v=order-tabs-1">
+<link rel="stylesheet" href="./styles.css?v=order-tabs-2">
 </head>
 <body>
 <header>
@@ -54,12 +54,15 @@
 
   <div class="ordering-layout">
     <aside class="card order-workspace" id="orderWorkspace" aria-label="訂單管理">
-      <div class="order-tabs" role="tablist" aria-label="訂單檢視">
-        <button type="button" id="summaryTab" role="tab" aria-selected="false" aria-controls="summary" tabindex="-1" data-order-tab="summary">訂單統計</button>
-        <button type="button" id="ordersTab" role="tab" aria-selected="true" aria-controls="orders" tabindex="0" data-order-tab="orders">訂單明細 <span class="order-count" id="orderCount" aria-hidden="true">0</span></button>
+      <div class="order-tabs-bar">
+        <div class="order-tabs" role="tablist" aria-label="訂單檢視" aria-keyshortcuts="1" aria-describedby="orderShortcut">
+          <button type="button" id="ordersTab" role="tab" aria-selected="true" aria-controls="orders" tabindex="0" data-order-tab="orders">訂單明細 <span class="order-count" id="orderCount" aria-hidden="true">0</span></button>
+          <button type="button" id="summaryTab" role="tab" aria-selected="false" aria-controls="summary" tabindex="-1" data-order-tab="summary">訂單統計</button>
+        </div>
+        <span class="order-shortcut" id="orderShortcut"><kbd>1</kbd> 切換</span>
       </div>
       <section class="order-panel summary-card" id="summary" role="tabpanel" aria-labelledby="summaryTab" tabindex="0" hidden>
-        <div class="section-heading"><h2><span class="section-number">02</span> 訂單統計</h2><span class="section-note">每一份，都幫你算好</span></div>
+        <div class="section-heading"><h2><span class="section-number">03</span> 訂單統計</h2><span class="section-note">每一份，都幫你算好</span></div>
         <div class="stats" id="stats"></div>
         <div class="cat-title">品項數量</div>
         <div class="count-list" id="counts"></div>
@@ -71,7 +74,7 @@
         <p class="summary-footnote">點餐與付款狀態會自動同步至雲端</p>
       </section>
       <section class="order-panel orders-card" id="orders" role="tabpanel" aria-labelledby="ordersTab" tabindex="0">
-        <div class="section-heading"><h2><span class="section-number">03</span> 訂單明細</h2><span class="section-note">點名字加點・點付款切換</span></div>
+        <div class="section-heading"><h2><span class="section-number">02</span> 訂單明細</h2><span class="section-note">點名字加點・點付款切換</span></div>
         <div class="order-list"><table>
           <thead class="sr-only"><tr><th scope="col">名字</th><th scope="col">品項</th><th scope="col">金額</th><th scope="col">付款</th><th scope="col">操作</th><th scope="col">最後更新</th></tr></thead>
           <tbody id="orderBody"></tbody>
@@ -343,12 +346,12 @@ function render(){
   const body = document.getElementById('orderBody');
   body.innerHTML = sd().orders.length ? sd().orders.map(o => `
     <tr class="${o.name === activeName ? 'sel' : ''} ${o.paid ? 'paidrow' : ''}">
-      <td class="name"><button class="order-name" data-name="${esc(o.name)}" aria-label="編輯${esc(o.name)}的訂單">${esc(o.name)}</button></td>
+      <td class="name"><button class="order-name" data-name="${esc(o.name)}" aria-label="編輯${esc(o.name)}的訂單" title="最後更新：${esc(updatedText(o.name))}">${esc(o.name)}</button></td>
       <td class="order-items">${o.items.map(l => `<span class="line-chip">${esc(l.n)}${l.q > 1 ? ' ×' + l.q : ''}</span>`).join('')}</td>
       <td class="num order-amount">${money(lineTotal(o))}</td>
       <td class="order-payment"><button class="paid ${o.paid ? 'yes' : 'no'}" data-paid="${esc(o.name)}" aria-label="${esc(o.name)}${o.paid ? '已付，切換為未付' : '未付，切換為已付'}">${o.paid ? '已付' : '未付'}</button></td>
       <td class="order-delete"><button class="ghost" title="刪除" aria-label="刪除${esc(o.name)}的訂單" data-del="${esc(o.name)}">✕</button></td>
-      <td class="updated-time"><span>更新於 </span>${esc(updatedText(o.name))}</td>
+      <td class="updated-time sr-only"><span>更新於 </span>${esc(updatedText(o.name))}</td>
     </tr>`).join('') : '<tr><td colspan="6" class="empty">還沒有訂單</td></tr>';
 
   // 管理
@@ -482,7 +485,7 @@ function toast(msg){
 const $ = id => document.getElementById(id);
 
 /* 訂單檢視獨立於雲端資料，切頁不會寫入訂單。 */
-const orderViews = ['summary', 'orders'];
+const orderViews = ['orders', 'summary'];
 function showOrderView(view, {focus = false, scroll = false} = {}) {
   if (!orderViews.includes(view)) return;
   orderViews.forEach(id => {
@@ -528,6 +531,19 @@ document.addEventListener('click', e => {
 });
 window.addEventListener('hashchange', orderViewFromHash);
 window.addEventListener('load', orderViewFromHash, {once:true});
+document.addEventListener('keydown', e => {
+  if (e.key !== '1' || e.repeat || e.isComposing || e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || document.querySelector('main').inert) return;
+  if (e.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"],[role="combobox"],[role="spinbutton"]')) return;
+  e.preventDefault();
+  const view = orderViews.find(id => $(id).hidden);
+  showOrderView(view, {focus:true, scroll:true});
+  history.replaceState(null, '', '#' + view);
+});
+function fitOrderWorkspace() {
+  $('orderWorkspace').classList.toggle('is-tall', $('orderWorkspace').offsetHeight > window.innerHeight - 40);
+}
+new ResizeObserver(fitOrderWorkspace).observe($('orderWorkspace'));
+window.addEventListener('resize', fitOrderWorkspace);
 
 $('storeSel').onchange = e => { state.store = e.target.value; activeName = null; save(); render(); };
 $('nameGo').onclick = () => { setActive($('nameInput').value); $('nameInput').value = ''; };
